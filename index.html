@@ -1,0 +1,2067 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Atividades, Caderno & Trilhas</title>
+    <!-- Tailwind CSS para Estilização Moderna -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome para Ícones Legíveis -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Inter para melhor legibilidade -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght=300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar para uma UI mais limpa */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header principal -->
+    <header class="bg-gradient-to-r flex-shrink-0 from-indigo-800 via-indigo-900 to-slate-900 text-white shadow-md">
+        <div class="max-w-7xl mx-auto px-4 py-5 sm:px-6 lg:px-8 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-3 bg-white/10 rounded-xl">
+                    <i class="fa-solid fa-file-signature text-2xl text-indigo-200"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-bold tracking-tight">Diário de Classe & Atividades</h1>
+                    <p class="text-xs text-indigo-200">Gestão de caderno, comparador de chamadas e controle das Trilhas Aprende Brasil</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="exportData()" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-xs font-semibold rounded-lg transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-download"></i> Exportar Dados
+                </button>
+                <button onclick="importDataTrigger()" class="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-xs font-semibold rounded-lg transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-upload"></i> Importar Dados
+                </button>
+                <button onclick="triggerClearAllData()" class="px-3 py-1.5 bg-red-500/20 hover:bg-red-500/40 text-red-100 text-xs font-semibold rounded-lg transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-trash-can"></i> Limpar Tudo
+                </button>
+                <input type="file" id="import-file" class="hidden" accept=".json" onchange="importData(event)">
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-7xl w-full mx-auto px-4 py-6 sm:px-6 lg:px-8 flex flex-col lg:flex-row gap-6">
+        
+        <!-- Sidebar Esquerda: Seleção de Turma, Alunos e Atividades -->
+        <aside class="w-full lg:w-80 flex flex-col gap-6 flex-shrink-0">
+            <!-- Card de Filtro e Seleção de Turma + Gerenciador de Alunos -->
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-filter text-indigo-600"></i> Selecionar Turma
+                </h2>
+                
+                <!-- Toggle Turno -->
+                <div class="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-xl mb-4">
+                    <button id="btn-matutino" onclick="setPeriodo('Matutino')" class="py-2 text-sm font-semibold rounded-lg transition-all shadow-sm bg-white text-indigo-800">
+                        Matutino
+                    </button>
+                    <button id="btn-vespertino" onclick="setPeriodo('Vespertino')" class="py-2 text-sm font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900">
+                        Vespertino
+                    </button>
+                </div>
+
+                <!-- Lista de Turmas Baseada no Turno -->
+                <div class="space-y-1.5 mb-4" id="turmas-list">
+                    <!-- Gerado Dinamicamente -->
+                </div>
+
+                <!-- Formulário para Adicionar Aluno Novo à Turma selecionada -->
+                <div class="pt-4 border-t border-slate-100">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                        <i class="fa-solid fa-user-plus text-indigo-500"></i> Novo Aluno na Turma
+                    </h3>
+                    <div class="flex gap-2">
+                        <input type="text" id="new-student-name" placeholder="Nome Completo do Aluno..." class="flex-grow px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50/50 focus:bg-white">
+                        <button onclick="addNewStudent()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition flex-shrink-0 font-bold text-xs" title="Adicionar Aluno">
+                            <i class="fa-solid fa-plus"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card de Gerenciamento de Atividades -->
+            <div id="sidebar-activity-card" class="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
+                <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-book-open text-indigo-600"></i> Atividades Gerais
+                </h2>
+                
+                <!-- Criar Nova Atividade -->
+                <div class="flex flex-col gap-2 mb-4 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                    <input type="text" id="new-activity-title" placeholder="Nome da Atividade..." class="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                    <div class="flex gap-2">
+                        <input type="date" id="new-activity-date" class="flex-grow px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                        <button onclick="createNewActivity()" class="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition flex-shrink-0 font-bold text-xs flex items-center gap-1">
+                            <i class="fa-solid fa-plus"></i> Criar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Lista de Atividades Ativas -->
+                <div id="activities-container" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    <!-- Gerado Dinamicamente -->
+                </div>
+            </div>
+        </aside>
+
+        <!-- Conteúdo Principal à Direita -->
+        <section class="flex-grow bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+            <!-- Tabs Header -->
+            <div class="border-b border-slate-150 bg-slate-50/50 p-4 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
+                <div class="flex flex-wrap gap-2">
+                    <button id="tab-btn-roster" onclick="switchTab('roster')" class="px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all bg-indigo-50 text-indigo-700 border border-indigo-100">
+                        <i class="fa-solid fa-clipboard-list mr-1"></i> Atividades
+                    </button>
+                    <button id="tab-btn-compare" onclick="switchTab('compare')" class="px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all text-slate-500 hover:bg-slate-100 hover:text-slate-800">
+                        <i class="fa-solid fa-code-compare mr-1"></i> Comparar OKs
+                    </button>
+                    <button id="tab-btn-notebook" onclick="switchTab('notebook')" class="px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all text-slate-500 hover:bg-slate-100 hover:text-slate-800">
+                        <i class="fa-solid fa-book mr-1"></i> Caderno Semanal
+                    </button>
+                    <button id="tab-btn-trilhas" onclick="switchTab('trilhas')" class="px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all text-slate-500 hover:bg-slate-100 hover:text-slate-800">
+                        <i class="fa-solid fa-chart-line mr-1"></i> Trilhas Aprende Brasil
+                    </button>
+                </div>
+                <div class="text-right w-full xl:w-auto flex items-center justify-end gap-2">
+                    <span id="badge-active-class" class="inline-block px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs font-bold uppercase tracking-wider">
+                        6º Ano A (Matutino)
+                    </span>
+                </div>
+            </div>
+
+            <!-- TAB 1: Lista de Alunos e Atividades -->
+            <div id="tab-roster" class="p-6 flex-grow flex flex-col">
+                <!-- Seletor de Atividade ativa no topo do Roster -->
+                <div class="mb-4 bg-slate-50 p-4 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-solid fa-circle-check text-indigo-600 text-xl"></i>
+                        <div>
+                            <p class="text-xs text-slate-500 font-medium">Atividade Selecionada Atualmente</p>
+                            <h3 id="active-activity-label" class="text-base font-bold text-slate-800">Selecione ou crie uma atividade para começar</h3>
+                        </div>
+                    </div>
+                    <div class="flex gap-2 text-xs" id="quick-actions-box">
+                        <!-- Botões de ação rápida -->
+                    </div>
+                </div>
+
+                <!-- Tabela de Alunos -->
+                <div class="flex-grow overflow-x-auto border border-slate-150 rounded-xl">
+                    <table class="min-w-full divide-y divide-slate-150 text-left text-sm">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th scope="col" class="py-3 px-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Nome do Aluno</th>
+                                <th scope="col" class="py-3 px-4 font-bold text-slate-500 uppercase tracking-wider text-xs text-center w-36">Histórico / Faltas</th>
+                                <th scope="col" class="py-3 px-4 font-bold text-slate-500 uppercase tracking-wider text-xs text-center w-48">Status da Atividade</th>
+                                <th scope="col" class="py-3 px-4 font-bold text-slate-500 uppercase tracking-wider text-xs text-center w-48">Anotações / Observações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="student-table-body" class="bg-white divide-y divide-slate-100">
+                            <!-- Alunos injetados dinamicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 2: Comparador de OKs (Colagem de textos) -->
+            <div id="tab-compare" class="p-6 hidden flex-grow flex flex-col gap-6">
+                <div class="bg-indigo-900 text-white p-5 rounded-2xl shadow-sm relative overflow-hidden">
+                    <div class="relative z-10">
+                        <h3 class="text-lg font-bold mb-1"><i class="fa-solid fa-circle-check text-emerald-400 mr-2"></i>Comparador de Presença Inteligente</h3>
+                        <p class="text-xs text-indigo-200 leading-relaxed max-w-2xl">
+                            Copie o texto bruto contendo os nomes dos alunos que deram "OK", "Presença" ou visitaram seu ambiente de aula. Cole o bloco abaixo para comparar com a lista oficial da turma selecionada. O sistema detectará automaticamente quem está faltando.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 flex-grow items-stretch">
+                    <!-- Esquerda: Caixa de Entrada -->
+                    <div class="flex flex-col gap-3">
+                        <label class="block text-sm font-bold text-slate-700">Cole os dados copiados aqui:</label>
+                        <textarea id="paste-input" placeholder="Exemplo:
+100000046JOÃO PEDRO BUTTENDORF deu ok
+Bianca de Medeiros OK
+Natan visualizou às 14:00..." class="flex-grow w-full p-4 border border-slate-200 rounded-2xl bg-slate-50 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition resize-none min-h-[250px]"></textarea>
+                        
+                        <div class="flex gap-2">
+                            <button onclick="compareNames()" class="flex-grow py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm transition shadow-sm hover:shadow flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-magnifying-glass"></i> Comparar Listas
+                            </button>
+                            <button onclick="clearCompareArea()" class="px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-medium text-sm transition">
+                                Limpar
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Direita: Resultado da Comparação -->
+                    <div class="flex flex-col border border-slate-150 rounded-2xl bg-slate-50/50 overflow-hidden">
+                        <div class="bg-slate-100 p-4 border-b border-slate-150 flex justify-between items-center">
+                            <h4 class="text-sm font-bold text-slate-700">Resultado da Análise</h4>
+                            <span id="compare-count-badge" class="px-2 py-0.5 bg-slate-200 text-slate-700 rounded text-xs font-bold">Aguardando</span>
+                        </div>
+                        
+                        <div class="p-4 flex-grow overflow-y-auto max-h-[340px]" id="compare-results-box">
+                            <div class="text-center text-slate-400 py-12">
+                                <i class="fa-regular fa-clipboard text-4xl mb-3 block"></i>
+                                <p class="text-sm">Cole o texto à esquerda e clique em <strong>Comparar Listas</strong> para ver quem não realizou a atividade ou não deu OK.</p>
+                            </div>
+                        </div>
+
+                        <!-- Rodapé de Ações Rápidas no resultado -->
+                        <div id="compare-actions-bar" class="p-4 bg-white border-t border-slate-150 hidden">
+                            <button onclick="triggerApplyCompareToStatus()" class="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition shadow-sm flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-user-minus"></i> Marcar Faltantes como "Não Entregou"
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: Organização Semanal do Caderno -->
+            <div id="tab-notebook" class="p-6 hidden flex-grow flex flex-col gap-6">
+                <div class="bg-amber-600 text-white p-5 rounded-2xl shadow-sm relative overflow-hidden">
+                    <div class="relative z-10">
+                        <h3 class="text-lg font-bold mb-1"><i class="fa-solid fa-book-open-reader mr-2"></i>Organização Semanal do Caderno</h3>
+                        <p class="text-xs text-amber-100 leading-relaxed max-w-2xl">
+                            Monitore a organização, capricho e o nível de completitude dos cadernos dos estudantes semanalmente. 
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                    <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center w-full sm:w-auto">
+                        <span class="text-xs font-bold text-slate-500 uppercase">Semana Ativa:</span>
+                        <select id="notebook-week-select" onchange="selectWeek(this.value)" class="px-3 py-1.5 text-xs font-bold border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+                            <!-- Injetado dinamicamente -->
+                        </select>
+                    </div>
+                    <div class="flex gap-2 w-full sm:w-auto">
+                        <input type="text" id="new-week-title" placeholder="Nova Semana (Ex: Semana 1)..." class="flex-grow sm:flex-none px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white">
+                        <button onclick="createNewWeek()" class="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition font-bold text-xs whitespace-nowrap">
+                            <i class="fa-solid fa-plus mr-1"></i> Criar Semana
+                        </button>
+                        <button onclick="triggerDeleteWeek()" class="p-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition" title="Excluir semana ativa">
+                            <i class="fa-solid fa-trash-can text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex-grow overflow-x-auto border border-slate-150 rounded-xl">
+                    <table class="min-w-full divide-y divide-slate-150 text-left text-sm">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th scope="col" class="py-3 px-4 font-bold text-slate-500 uppercase tracking-wider text-xs">Estudante</th>
+                                <th scope="col" class="py-3 px-4 font-bold text-slate-500 uppercase tracking-wider text-xs text-center w-40">Média Cadernos</th>
+                                <th scope="col" class="py-3 px-4 font-bold text-slate-500 uppercase tracking-wider text-xs text-center w-64">Avaliação do Caderno</th>
+                            </tr>
+                        </thead>
+                        <tbody id="notebook-table-body" class="bg-white divide-y divide-slate-100">
+                            <!-- Conteúdo do caderno gerado dinamicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB 4: Trilhas de Exercícios no Aprende Brasil -->
+            <div id="tab-trilhas" class="p-6 hidden flex-grow flex flex-col gap-6">
+                <div class="bg-emerald-800 text-white p-5 rounded-2xl shadow-sm relative overflow-hidden">
+                    <div class="relative z-10">
+                        <h3 class="text-lg font-bold mb-1"><i class="fa-solid fa-graduation-cap text-emerald-300 mr-2"></i>Trilhas de Exercícios no Aprende Brasil</h3>
+                        <p class="text-xs text-emerald-100 leading-relaxed max-w-2xl">
+                            Compare os dados do relatório de acessos do Aprende Brasil com a lista oficial da turma para registrar quem realizou a trilha e identificar imediatamente as pendências. Cole dados de desempenho para extrair porcentagens (ex: <code class="bg-emerald-900/60 px-1 py-0.5 rounded text-yellow-300">88,46%</code> ou frações <code class="bg-emerald-900/60 px-1 py-0.5 rounded text-yellow-300">34,5 / 39</code>).
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex flex-col md:flex-row gap-4 items-stretch">
+                    <!-- Esquerda: Seletor de Trilhas e Criação -->
+                    <div class="w-full md:w-80 flex flex-col gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+                        <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider"><i class="fa-solid fa-list-check mr-1"></i> Selecionar Trilha</h4>
+                        <select id="trail-select" onchange="selectTrail(this.value)" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-lg bg-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                            <!-- Opções preenchidas dinamicamente -->
+                        </select>
+
+                        <div class="border-t border-slate-200 my-1 pt-3">
+                            <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2"><i class="fa-solid fa-plus mr-1"></i> Criar Nova Trilha</h4>
+                            <div class="space-y-2">
+                                <input type="text" id="new-trail-title" placeholder="Nome da Trilha (Ex: Trilha 1)..." class="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
+                                <button onclick="createNewTrail()" class="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition font-bold text-xs">
+                                    Adicionar Trilha
+                                </button>
+                                <button onclick="triggerDeleteTrail()" class="w-full py-1.5 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition font-bold text-xs" title="Excluir trilha ativa">
+                                    <i class="fa-solid fa-trash-can mr-1"></i> Excluir Ativa
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Direita: Comparador e Resultados -->
+                    <div class="flex-grow grid grid-cols-1 xl:grid-cols-2 gap-4 items-stretch">
+                        <!-- Entrada de Dados -->
+                        <div class="flex flex-col gap-3 border border-slate-200 p-4 rounded-xl">
+                            <label class="block text-xs font-bold text-slate-700 uppercase">Colar Alunos / Relatório da Trilha (Nome e Desempenho):</label>
+                            <textarea id="trail-paste-input" placeholder="Exemplo:
+Abreu de Oliveira, Isabela 34,5 / 39, 88,46%
+Danilo Langer Lohse 100%..." class="flex-grow w-full p-3 border border-slate-200 rounded-xl bg-slate-50 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition resize-none min-h-[160px]"></textarea>
+                            <div class="flex gap-2">
+                                <button onclick="compareTrailNames()" class="flex-grow py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
+                                    <i class="fa-solid fa-magnifying-glass"></i> Compare Acessos & Notas
+                                </button>
+                                <button onclick="clearTrailCompareArea()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-xs transition">
+                                    Limpar
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Lista de Saída do Comparador -->
+                        <div class="flex flex-col border border-slate-200 rounded-xl overflow-hidden bg-slate-50/50">
+                            <div class="bg-slate-100 p-3 border-b border-slate-200 flex justify-between items-center">
+                                <h5 class="text-xs font-bold text-slate-700 uppercase">Análise de Trilha</h5>
+                                <span id="trail-compare-badge" class="px-2 py-0.5 bg-slate-200 text-slate-700 rounded text-[10px] font-bold">Aguardando</span>
+                            </div>
+                            <div class="p-3 flex-grow overflow-y-auto max-h-[180px] text-xs" id="trail-results-box">
+                                <div class="text-center text-slate-400 py-8">
+                                    <p>Cole a listagem de concluintes à esquerda e clique em **Compare Acessos & Notas**.</p>
+                                </div>
+                            </div>
+                            <div id="trail-actions-bar" class="p-3 bg-white border-t border-slate-200 hidden">
+                                <button onclick="triggerApplyCompareToTrail()" class="w-full py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg text-xs transition flex items-center justify-center gap-1.5 shadow-sm">
+                                    <i class="fa-solid fa-user-check"></i> Registrar Resultados na Trilha Selecionada
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lista de status individual da trilha ativa -->
+                <div class="mt-4">
+                    <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2"><i class="fa-solid fa-table-list mr-1"></i> Status Individuais da Trilha</h4>
+                    <div class="overflow-x-auto border border-slate-150 rounded-xl max-h-72 overflow-y-auto">
+                        <table class="min-w-full divide-y divide-slate-150 text-left text-sm">
+                            <thead class="bg-slate-50 sticky top-0 z-10">
+                                <tr>
+                                    <th scope="col" class="py-2.5 px-4 font-bold text-slate-500 uppercase text-xs">Estudante</th>
+                                    <th scope="col" class="py-2.5 px-4 font-bold text-slate-500 uppercase text-xs text-center w-64">Desempenho (% / Fração)</th>
+                                    <th scope="col" class="py-2.5 px-4 font-bold text-slate-500 uppercase text-xs text-center w-64">Status na Trilha</th>
+                                </tr>
+                            </thead>
+                            <tbody id="trail-status-table-body" class="bg-white divide-y divide-slate-100">
+                                <!-- Preenchido dinamicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal para Notificação customizada (Substituto do alert) -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Modal de Confirmação Customizado (Elimina confirm() nativo) -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 hidden">
+        <div class="bg-white p-6 rounded-2xl shadow-xl max-w-sm w-full mx-4 transform scale-95 transition-all duration-200">
+            <h3 id="confirm-title" class="text-base font-bold text-slate-800 mb-2">Tem certeza?</h3>
+            <p id="confirm-message" class="text-xs text-slate-500 mb-6">Esta ação não poderá ser desfeita.</p>
+            <div class="flex justify-end gap-2 text-xs font-bold">
+                <button id="confirm-cancel-btn" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl transition">Cancelar</button>
+                <button id="confirm-ok-btn" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl transition">Confirmar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Banco de dados oficial de alunos (Sempre atualizado e limpo)
+        const TURMAS_DATABASE = {
+            "Matutino": {
+                "6º Ano A": [
+                    "Amanda Beatriz Silveira", "Bianca de Medeiros", "Danilo Langer Lohse", "Davi Joaquim Brayer",
+                    "Davi José Fossile Ricardo Vieira", "Gabriel Henrique Gesser", "Iago Danyel Maia", "Isabela Abreu de Oliveira",
+                    "João Lucas Souza de Lima", "João Paulo Brayer", "João Pedro Buttendorf", "Keila Tainara Daniel",
+                    "Laura dos Santos", "Luiz Felipe Lopes Stazeski", "Maiara Piacentini Bublitz", "Melissa Jung",
+                    "Melissa Maria Dias", "Milena Flor da Silva", "Nathan Rocha da Luz", "Raíssa Yasmin Ritter Bolduan",
+                    "Sophia Isabelly da Silva", "Thais Talita Engelhardt", "Willyam Gustavo Dallmann"
+                ],
+                "7º Ano 01": [
+                    "Alana Alegri de Souza", "Alexah Zivelse Tovar Sardinas", "Alexandre Marquardt", "Ana Klara Herrmann",
+                    "Arthur Franceschi Ruthes", "Arthur Henrique Imroth", "Davi Lucas de Oliveira", "Felipe Mateus Hackbarth",
+                    "Gabriel Sell Ludwinski", "Heloisa Cunha", "Iriel Krisanski Buttendorf", "Isabely Lourenço da Silva",
+                    "Leticia Dos Santos Dutra", "Letícia Gabriely Burger", "Maria Heloisa de Matos Schulz", "Matheus Wieczorkievicz de Freitas",
+                    "Micheli Maas", "Pablo David Lima da Silva Ferreira", "Pedro Henrique Berlato Tavares", "Rafaelly Marcondes dos Santos",
+                    "Renan Lourenço Martins", "Samuel da Cruz Marquardt", "Tamara Manueli Wintrich", "Theylor Steffen Hernacki"
+                ],
+                "8º Ano": [
+                    "Anthony Leonardo Stank da Silva", "Antonio Carlos Funke", "Carlos Vinicius Quost Glatz", "David Emanuel da Rocha Luz",
+                    "Felipe Alcântara dos Santos", "Frederico Kauã Mendonsa de Vargas", "Heloisa Caetano da Silva", "Henrique Welker",
+                    "Isabely Victória Tressi", "Jaqueline Beatriz Scheuer", "João Victor Duarte Bairros", "Lucas Hessel Stoeberl",
+                    "Luiz Alberto Piovesan Neto", "Maria Helena Lopes Stazeski", "Maria Heloisa Soares Kurota", "Pedro Henrique Kizema",
+                    "Rafaela Vicente", "Ryhana Emanuelle Machado", "Stella Maria Ferreira dos Santos Camargo", "Thaylaine Martins de Andrade",
+                    "Vinicius Mateus Baier", "Yasmin Mülbauer de Oliveira"
+                ],
+                "9º Ano": [
+                    "Ana Beatriz Rodrigues dos Santos", "Andrielly Kannenberg", "Arthur Birr de Lima", "Bianca Catarina Ganske Rodrigeri",
+                    "Breno Baptistella Gretter", "Daniel Henrique Ulrich Teixeira", "Eduarda Eing Welker", "Eduardo Kreutzfeld",
+                    "Emili Gabrieli Brüske Pinto", "Graziely Duarte Rosá", "Gustavo Langer Schütze", "Gustavo Nascimento Mendes Silva",
+                    "João Carlos Moreira Ferreira", "João Vithor Gesser", "Kariny Iasmin Dotto Ferreira", "Paulo Henrique de Quadros",
+                    "Pyetro Boarski Gonçalves", "Rafaela Toni de Lima", "Sophia Eggres Moreira", "Willian Gabriel Denck Ottomeyer",
+                    "Yasmim Vitória Gaudet Janckowski"
+                ]
+            },
+            "Vespertino": {
+                "6º Ano": [
+                    "Adryan Max Bayer Ramalho", "Ana Julia Antoniawicz da Silva", "Ana Vitória Bremer", "Arthur Farias Mota",
+                    "Camilly Vitória Sell", "Danieli Bosse", "Emily Isadora Carlini", "Gustavo Scottini Zimmermann",
+                    "Ilias Krisanski Buttendorf", "Jackson Kusinski Borges", "Luiz Fernando Moraes", "Marcos Vinicius Machado Gonçalves",
+                    "Maria Helena Brosowski Scheple", "Maria Luiza Paixão Santos", "Maria Vitória Peres Selzler", "Nicolli Kiatkowski",
+                    "Pedro Henrique Freire Rodrigues", "Rafael dos Santos Frotscher", "Rafael Peterson Hubner", "Sofia dos Santos Vanessa Nunes Pereira"
+                ],
+                "7º Ano": [
+                    "Adan Ricardo Molina Alarcon", "Andressa Karyna Wolf", "Byanca Araujo Krueger", "Danieli Stiss",
+                    "Eduarda Bortoncello da Silva", "Emilly Gabrielli Mathedi", "Enzo Emanuel Schneider Borges Pires", "Evilin Nicole MassaneIRO Pinto",
+                    "Gabrieli Bianchini Rothstein", "Gabriely Roberta Hübner", "Henrique Richert Alegri", "João Victor Wessler",
+                    "Lorenzo Emanoel de Camargo", "Lucas Emanuel Felipe", "Mateus Daniel Borges", "Pietro de Oliveira Bueno",
+                    "Rayan Felipe Braunsburger Wodzinsky", "Victor Henrique Schalinski", "Victoria Gabriela Brosowski Mülbauer", "Victória Machado Gonçalves",
+                    "Wolaci Bolduan Amandio", "Yasmin Nicolly de Liz Kriger"
+                ],
+                "8º Ano": [
+                    "Ana Carolina Sprung Lourenço", "Ana Clara Guedes da Nobrega", "Bruno Yuri Xavier Dorn", "Denilson Sell",
+                    "Emilly Moratelli Piontkewicz", "Enzo Przezdziecki Cardozo", "Gilberto Wessler", "Giulia Jacielly Gonçalves Wintrich",
+                    "Gustavo de Oliveira Voigt", "João Henrique Schalinsky", "Julia Gonçalves da Fonseca", "Lara Teodora Stein Gesser",
+                    "Luane Vitória da Silva dos Santos", "Manuela Borges", "Maria Fernanda de Souza Pacher", "Rialám Melchert",
+                    "Samoel Hohsptarch", "Victor Gabriel Brosowski Mülbauer", "Vitor Colaço"
+                ],
+                "9º Ano": [
+                    "Adilson Geovani Felipe", "Alexandra Lubacheski Fontoura", "Alice Maciel Duarte", "Bianca Kusinski Borges",
+                    "Bruna Laís Mendes da Cruz", "Castiel Benjamin Brunelli", "Davi Henrique Alves Pereira", "Emanuelly Matoso dos Santos",
+                    "Erica Eloá Novaka", "Gabriel Angus Schulz", "Guilherme Garcia Maurissens", "Gustavo Candido Delphino",
+                    "Isabely Fideles dos Santos Dias", "João Wesley Antunes Stank", "Kauan Sprung Oliveira", "Luan Samuel Kenoblau",
+                    "Maria Vitória Ulrich Teixeira", "Mateus Ryan Paixão Santos", "Nicolas Kauã Kiatkowski", "Renan Colaço",
+                    "Tamara Ribeiro", "Vinicius Pereira"
+                ]
+            }
+        };
+
+        // Dados Iniciais Atualizados do Diário (com as aulas de Junho 2026 enviadas pelo usuário)
+        const INITIAL_USER_DATA = {
+            "Matutino_6º Ano A": {
+                "activities": {
+                    "act_1781119503613": {
+                        "id": "act_1781119503613",
+                        "title": "Atividade 1",
+                        "date": "10/06/2026",
+                        "records": {}
+                    },
+                    "act_1781186051522": {
+                        "id": "act_1781186051522",
+                        "title": "Observação dos cadernos",
+                        "date": "11/06/2026",
+                        "records": {
+                            "Amanda Beatriz Silveira": "entregou", "Bianca de Medeiros": "entregou", "Danilo Langer Lohse": "entregou",
+                            "Davi Joaquim Brayer": "entregou", "Davi José Fossile Ricardo Vieira": "nao-entregou", "Gabriel Henrique Gesser": "entregou",
+                            "Iago Danyel Maia": "entregou", "Isabela Abreu de Oliveira": "entregou", "João Lucas Souza de Lima": "nao-entregou",
+                            "João Paulo Brayer": "entregou", "João Pedro Buttendorf": "entregou", "Keila Tainara Daniel": "entregou",
+                            "Laura dos Santos": "entregou", "Luiz Felipe Lopes Stazeski": "nao-entregou", "Melissa Jung": "entregou",
+                            "Melissa Maria Dias": "entregou", "Milena Flor da Silva": "entregou", "Nathan Rocha da Luz": "entregou",
+                            "Maiara Piacentini Bublitz": "entregou", "Raíssa Yasmin Ritter Bolduan": "entregou", "Sophia Isabelly da Silva": "entregou",
+                            "Thais Talita Engelhardt": "entregou", "Willyam Gustavo Dallmann": "entregou"
+                        }
+                    }
+                },
+                "studentNotes": {
+                    "Bianca de Medeiros": "Risco de reprovação",
+                    "João Lucas Souza de Lima": "Caderno incompleto - Sem internet - problemas em casa",
+                    "João Pedro Buttendorf": "Risco de reprovação - Prestar atenção",
+                    "Luiz Felipe Lopes Stazeski": "Caderno incompleto",
+                    "Willyam Gustavo Dallmann": "Precisa melhorar"
+                },
+                "activeActivityId": "act_1781119503613"
+            },
+            "Vespertino_6º Ano": {
+                "activities": {
+                    "act_1781119587518": {
+                        "id": "act_1781119587518",
+                        "title": "Atividade 1",
+                        "date": "10/06/2026",
+                        "records": {
+                            "Adryan Max Bayer Ramalho": "entregou", "Ana Julia Antoniawicz da Silva": "entregou", "Ana Vitória Bremer": "entregou",
+                            "Arthur Farias Mota": "entregou", "Camilly Vitória Sell": "entregou", "Danieli Bosse": "entregou",
+                            "Emily Isadora Carlini": "entregou", "Gustavo Scottini Zimmermann": "entregou", "Ilias Krisanski Buttendorf": "nao-entregou",
+                            "Jackson Kusinski Borges": "nao-entregou", "Luiz Fernando Moraes": "nao-entregou", "Marcos Vinicius Machado Gonçalves": "nao-entregou",
+                            "Maria Helena Brosowski Scheple": "entregou", "Maria Luiza Paixão Santos": "entregou", "Maria Vitória Peres Selzler": "nao-entregou",
+                            "Nicolli Kiatkowski": "entregou", "Pedro Henrique Freire Rodrigues": "entregou", "Rafael dos Santos Frotscher": "entregou",
+                            "Rafael Peterson Hubner": "nao-entregou", "Sofia dos Santos Vanessa Nunes Pereira": "entregou"
+                        }
+                    }
+                },
+                "studentNotes": {
+                    "Rafael Peterson Hubner": "Reprovação",
+                    "Ilias Krisanski Buttendorf": "Caderno Incompleto",
+                    "Jackson Kusinski Borges": "Caderno incompleto",
+                    "Luiz Fernando Moraes": "Caderno incompleto",
+                    "Marcos Vinicius Machado Gonçalves": "Caderno incompleto",
+                    "Maria Vitória Peres Selzler": "Caderno incompleto",
+                    "Pedro Henrique Freire Rodrigues": "Passar tudo a limpo em um novo caderno"
+                },
+                "activeActivityId": "act_1781119587518"
+            },
+            "Vespertino_7º Ano": {
+                "activities": {
+                    "act_1781199600702": {
+                        "id": "act_1781199600702",
+                        "title": "Observações caderno",
+                        "date": "11/06/2026",
+                        "records": {}
+                    }
+                },
+                "studentNotes": {
+                    "Adan Ricardo Molina Alarcon": "Alergia severa a ovo (não pode nem tocar)",
+                    "Henrique Richert Alegri": "Alergia alimentar: camarão"
+                },
+                "activeActivityId": "act_1781199600702"
+            },
+            "Vespertino_8º Ano": {
+                "activities": {
+                    "act_1781119653929": {
+                        "id": "act_1781119653929",
+                        "title": "Atividade 1",
+                        "date": "10/06/2026",
+                        "records": {}
+                    },
+                    "act_1781119704648": {
+                        "id": "act_1781119704648",
+                        "title": "Observações caderno",
+                        "date": "10/06/2026",
+                        "records": {
+                            "Ana Carolina Sprung Lourenço": "entregou", "Ana Clara Guedes da Nobrega": "entregou", "Bruno Yuri Xavier Dorn": "entregou",
+                            "Denilson Sell": "entregou", "Emilly Moratelli Piontkewicz": "entregou", "Enzo Przezdziecki Cardozo": "entregou",
+                            "Gilberto Wessler": "entregou", "Giulia Jacielly Gonçalves Wintrich": "entregou", "Gustavo de Oliveira Voigt": "entregou",
+                            "João Henrique Schalinsky": "entregou", "Julia Gonçalves da Fonseca": "entregou", "Lara Teodora Stein Gesser": "entregou",
+                            "Manuela Borges": "entregou", "Maria Fernanda de Souza Pacher": "entregou", "Rialám Melchert": "entregou",
+                            "Samoel Hohsptarch": "entregou", "Victor Gabriel Brosowski Mülbauer": "entregou", "Vitor Colaço": "entregou"
+                        }
+                    }
+                },
+                "studentNotes": {
+                    "Rialám Melchert": "Adaptação de prova",
+                    "Luane Vitória da Silva dos Santos": "Faltou",
+                    "Vitor Colaço": "Adaptação de prova"
+                },
+                "activeActivityId": "act_1781119653929"
+            },
+            "Matutino_7º Ano 01": {
+                "activities": {
+                    "act_1781174505873": {
+                        "id": "act_1781174505873",
+                        "title": "Analise dos cadernos",
+                        "date": "11/06/2026",
+                        "records": {
+                            "Alana Alegri de Souza": "entregou", "Alexah Zivelse Tovar Sardinas": "entregou", "Alexandre Marquardt": "entregou",
+                            "Ana Klara Herrmann": "entregou", "Arthur Franceschi Ruthes": "entregou", "Arthur Henrique Imroth": "entregou",
+                            "Davi Lucas de Oliveira": "entregou", "Felipe%20Mateus%20Hackbarth": "entregou", "Gabriel Sell Ludwinski": "entregou",
+                            "Heloisa Cunha": "entregou", "Iriel Krisanski Buttendorf": "nao-entregou", "Renan Lourenço Martins": "entregou",
+                            "Pedro Henrique Berlato Tavares": "nao-entregou", "Leticia Dos Santos Dutra": "entregou", "Micheli Maas": "entregou",
+                            "Isabely Lourenço da Silva": "entregou", "Maria Heloisa de Matos Schulz": "nao-entregou", "Matheus Wieczorkievicz de Freitas": "entregou",
+                            "Theylor Steffen Hernacki": "pendente", "Tamara Manueli Wintrich": "entregou", "Samuel da Cruz Marquardt": "entregou",
+                            "Rafaelly Marcondes dos Santos": "entregou", "Pablo David Lima da Silva Ferreira": "nao-entregou"
+                        }
+                    }
+                },
+                "studentNotes": {
+                    "Alana Alegri de Souza": "Alunos para reprovar",
+                    "Iriel Krisanski Buttendorf": "Alunos para reprovar - falta resumo",
+                    "Maria Heloisa de Matos Schulz": "Caderno incompleto - Para reprovação",
+                    "Theylor Steffen Hernacki": "Para reprovação",
+                    "Pedro Henrique Berlato Tavares": "Caderno incompleto.",
+                    "Pablo David Lima da Silva Ferreira": "Não fez o resumo do video"
+                },
+                "activeActivityId": "act_1781174505873"
+            },
+            "Matutino_8º Ano": {
+                "activities": {
+                    "act_1781176877683": {
+                        "id": "act_1781176877683",
+                        "title": "Atividade 1",
+                        "date": "11/06/2026",
+                        "records": {}
+                    },
+                    "act_1781176888519": {
+                        "id": "act_1781176888519",
+                        "title": "Observar caderno",
+                        "date": "11/06/2026",
+                        "records": {
+                            "Anthony Leonardo Stank da Silva": "entregou", "Antonio Carlos Funke": "entregou", "Yasmin Mülbauer de Oliveira": "entregou",
+                            "Rafaela Vicente": "entregou", "Thaylaine Martins de Andrade": "nao-entregou", "Isabely Victória Tressi": "entregou",
+                            "Frederico Kauã Mendonsa de Vargas": "nao-entregou", "Henrique Welker": "nao-entregou", "Pedro Henrique Kizema": "entregou",
+                            "Vinicius Mateus Baier": "entregou", "Maria Heloisa Soares Kurota": "nao-entregou", "Luiz Alberto Piovesan Neto": "entregou",
+                            "Stella Maria Ferreira dos Santos Camargo": "entregou", "Heloisa Caetano da Silva": "entregou"
+                        }
+                    }
+                },
+                "studentNotes": {
+                    "Thaylaine Martins de Andrade": "Refazer assunto de medias caderno",
+                    "Frederico Kauã Mendonsa de Vargas": "Caderno incompleto",
+                    "Henrique Welker": "Passar caderno a limpo",
+                    "Maria Heloisa Soares Kurota": "Caderno incompleto"
+                },
+                "activeActivityId": "act_1781176888519"
+            },
+            "Vespertino_9º Ano": {
+                "activities": {
+                    "act_1781280546293": {
+                        "id": "act_1781280546293",
+                        "title": "observações no caderno",
+                        "date": "12/06/2026",
+                        "records": {
+                            "Adilson Geovani Felipe": "entregou", "Alexandra Lubacheski Fontoura": "entregou", "Alice Maciel Duarte": "entregou",
+                            "Bianca Kusinski Borges": "nao-entregou", "Bruna Laís Mendes da Cruz": "entregou", "Castiel Benjamin Brunelli": "entregou",
+                            "Davi Henrique Alves Pereira": "entregou", "Emanuelly Matoso dos Santos": "nao-entregou", "Erica Eloá Novaka": "entregou",
+                            "Gabriel Angus Schulz": "entregou", "Guilherme Garcia Maurissens": "entregou", "Gustavo Candido Delphino": "entregou",
+                            "Isabely Fideles dos Santos Dias": "entregou", "João Wesley Antunes Stank": "nao-entregou", "Kauan Sprung Oliveira": "nao-entregou",
+                            "Luan Samuel Kenoblau": "entregou", "Maria Vitória Ulrich Teixeira": "entregou", "Mateus Ryan Paixão Santos": "entregou",
+                            "Nicolas Kauã Kiatkowski": "entregou", "Renan Colaço": "entregou", "Tamara Ribeiro": "nao-entregou", "Vinicius Pereira": "entregou"
+                        }
+                    }
+                },
+                "studentNotes": {
+                    "Luan Samuel Kenoblau": "Adaptação de prova",
+                    "Adilson Geovani Felipe": "incompleto",
+                    "Bianca Kusinski Borges": "Falta completar o que falta",
+                    "Emanuelly Matoso dos Santos": "Faltou",
+                    "João Wesley Antunes Stank": "FALTOU ATIVIDADE",
+                    "Kauan Sprung Oliveira": "FALTOU ATIVIDADE",
+                    "Tamara Ribeiro": "FALTOU"
+                },
+                "activeActivityId": "act_1781280546293"
+            }
+        };
+
+        // Estado Global da Aplicação
+        let currentPeriodo = "Matutino";
+        let currentTurma = "6º Ano A";
+        let currentTab = "roster";
+        let appData = {};
+        
+        // Estados temporários dos comparadores
+        let compareResults = { match: [], missing: [] };
+        let trailCompareResults = { match: [], missing: [] };
+
+        // Inicializa o banco de dados e os dados do usuário com segurança
+        function initApp() {
+            const savedData = localStorage.getItem("diario_classe_completo_v4");
+            if (savedData) {
+                try {
+                    appData = JSON.parse(savedData);
+                } catch(e) {
+                    console.error("Falha ao carregar registros locais, reiniciando.", e);
+                    appData = JSON.parse(JSON.stringify(INITIAL_USER_DATA));
+                }
+            } else {
+                appData = JSON.parse(JSON.stringify(INITIAL_USER_DATA));
+            }
+
+            // MIGRAR AUTOMATICAMENTE CASO O USUÁRIO TENHA DADOS ANTIGOS NO NAVEGADOR
+            // Se o usuário não possui a aula real 'act_1781186051522', forçamos a atualização para o novo banco de dados.
+            if (appData["Matutino_6º Ano A"] && !appData["Matutino_6º Ano A"].activities["act_1781186051522"]) {
+                appData = JSON.parse(JSON.stringify(INITIAL_USER_DATA));
+            }
+
+            // CORREÇÃO FORÇADA DO 7º ANO VESPERTINO SE TIVER DADOS LEGADOS ERRADOS
+            const keyVesp7 = "Vespertino_7º Ano";
+            if (appData[keyVesp7] && appData[keyVesp7].students && appData[keyVesp7].students.includes("Alana Alegri de Souza")) {
+                appData[keyVesp7].students = [...TURMAS_DATABASE["Vespertino"]["7º Ano"]];
+                if (!appData[keyVesp7].studentNotes) appData[keyVesp7].studentNotes = {};
+                appData[keyVesp7].studentNotes["Adan Ricardo Molina Alarcon"] = "Alergia severa a ovo (não pode nem tocar)";
+                appData[keyVesp7].studentNotes["Henrique Richert Alegri"] = "Alergia alimentar: camarão";
+            }
+
+            // Garante que todas as turmas registradas existem estruturadas no appData
+            for (const turno in TURMAS_DATABASE) {
+                for (const turma in TURMAS_DATABASE[turno]) {
+                    const key = `${turno}_${turma}`;
+                    if (!appData[key]) {
+                        appData[key] = {
+                            activities: {},
+                            studentNotes: {},
+                            notebooks: {},
+                            trails: {},
+                            students: [],
+                            activeActivityId: null,
+                            activeWeekId: null,
+                            activeTrailId: null
+                        };
+                    }
+                    if (!appData[key].activities) appData[key].activities = {};
+                    if (!appData[key].studentNotes) appData[key].studentNotes = {};
+                    if (!appData[key].notebooks) appData[key].notebooks = {};
+                    if (!appData[key].trails) appData[key].trails = {};
+                    
+                    // Inicializa a lista de estudantes a partir do banco de dados fixo caso não exista
+                    if (!appData[key].students || appData[key].students.length === 0) {
+                        appData[key].students = [...(TURMAS_DATABASE[turno][turma] || [])];
+                    }
+                }
+            }
+
+            renderTurmasList();
+            selectTurma(Object.keys(TURMAS_DATABASE[currentPeriodo])[0]);
+        }
+
+        function saveState() {
+            localStorage.setItem("diario_classe_completo_v4", JSON.stringify(appData));
+        }
+
+        // Exibe Diálogo de Confirmação customizado (Segurança para não usar confirm nativo)
+        function showCustomConfirm(title, message, onConfirm) {
+            const modal = document.getElementById("confirm-modal");
+            document.getElementById("confirm-title").innerText = title;
+            document.getElementById("confirm-message").innerText = message;
+            modal.classList.remove("hidden");
+
+            const cancelBtn = document.getElementById("confirm-cancel-btn");
+            const okBtn = document.getElementById("confirm-ok-btn");
+
+            // Substituir os botões para limpar Listeners de eventos antigos acumulados
+            const newCancel = cancelBtn.cloneNode(true);
+            const newOk = okBtn.cloneNode(true);
+            cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+            okBtn.parentNode.replaceChild(newOk, okBtn);
+
+            newCancel.addEventListener('click', () => {
+                modal.classList.add("hidden");
+            });
+
+            newOk.addEventListener('click', () => {
+                modal.classList.add("hidden");
+                onConfirm();
+            });
+        }
+
+        // Alternar Turnos (Matutino / Vespertino)
+        function setPeriodo(periodo) {
+            currentPeriodo = periodo;
+            const btnMat = document.getElementById("btn-matutino");
+            const btnVesp = document.getElementById("btn-vespertino");
+            
+            if (periodo === 'Matutino') {
+                btnMat.className = "py-2 text-sm font-semibold rounded-lg transition-all shadow-sm bg-white text-indigo-800";
+                btnVesp.className = "py-2 text-sm font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900";
+            } else {
+                btnVesp.className = "py-2 text-sm font-semibold rounded-lg transition-all shadow-sm bg-white text-indigo-800";
+                btnMat.className = "py-2 text-sm font-semibold rounded-lg transition-all text-slate-600 hover:text-slate-900";
+            }
+
+            renderTurmasList();
+            const tKeys = Object.keys(TURMAS_DATABASE[currentPeriodo]);
+            if (tKeys.length > 0) {
+                selectTurma(tKeys[0]);
+            }
+        }
+
+        // Desenhar turmas na Sidebar
+        function renderTurmasList() {
+            const container = document.getElementById("turmas-list");
+            container.innerHTML = "";
+            const list = TURMAS_DATABASE[currentPeriodo];
+
+            for (const key in list) {
+                const isActive = (key === currentTurma);
+                const storageKey = `${currentPeriodo}_${key}`;
+                const count = appData[storageKey] && appData[storageKey].students 
+                    ? appData[storageKey].students.length 
+                    : (list[key].length || 0);
+                
+                const btn = document.createElement("button");
+                btn.onclick = () => selectTurma(key);
+                btn.className = `w-full flex justify-between items-center px-4 py-3 text-sm font-semibold rounded-xl transition ${
+                    isActive 
+                    ? "bg-indigo-600 text-white shadow-sm" 
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                }`;
+                btn.innerHTML = `
+                    <span class="flex items-center gap-2">
+                        <i class="fa-solid fa-users ${isActive ? 'text-indigo-200' : 'text-slate-400'}"></i>
+                        ${key}
+                    </span>
+                    <span class="px-2 py-0.5 rounded-md text-xs ${isActive ? 'bg-indigo-700 text-indigo-100' : 'bg-slate-200 text-slate-600'}">
+                        ${count}
+                    </span>
+                `;
+                container.appendChild(btn);
+            }
+        }
+
+        // Selecionar a Turma Ativa de Trabalho
+        function selectTurma(turma) {
+            currentTurma = turma;
+            renderTurmasList();
+            document.getElementById("badge-active-class").innerText = `${currentTurma} (${currentPeriodo})`;
+            
+            const todayStr = new Date().toISOString().split('T')[0];
+            document.getElementById("new-activity-date").value = todayStr;
+
+            const key = `${currentPeriodo}_${currentTurma}`;
+            
+            // Se os estudantes não estiverem estruturados nessa turma do appData, preenche a partir da base oficial
+            if (!appData[key].students || appData[key].students.length === 0) {
+                appData[key].students = [...(TURMAS_DATABASE[currentPeriodo][currentTurma] || [])];
+            }
+
+            // Se a lista de atividades estiver vazia, adicionamos uma default de testes
+            const activityKeys = Object.keys(appData[key].activities);
+            if (activityKeys.length === 0) {
+                const defaultId = "act_" + Date.now();
+                appData[key].activities[defaultId] = {
+                    id: defaultId,
+                    title: "Atividade 1",
+                    date: new Date().toLocaleDateString('pt-BR'),
+                    records: {}
+                };
+                appData[key].activeActivityId = defaultId;
+            }
+
+            // Garante que existe estrutura de semanas de cadernos cadastrada
+            const weekKeys = Object.keys(appData[key].notebooks);
+            if (weekKeys.length === 0) {
+                const defaultWeekId = "week_" + Date.now();
+                appData[key].notebooks[defaultWeekId] = {
+                    id: defaultWeekId,
+                    title: "Semana 1",
+                    records: {}
+                };
+                appData[key].activeWeekId = defaultWeekId;
+            }
+
+            // Garante que existe estrutura de trilhas cadastrada
+            const trailKeys = Object.keys(appData[key].trails);
+            if (trailKeys.length === 0) {
+                const defaultTrailId = "trail_" + Date.now();
+                appData[key].trails[defaultTrailId] = {
+                    id: defaultTrailId,
+                    title: "Trilha 1",
+                    records: {}
+                };
+                appData[key].activeTrailId = defaultTrailId;
+            }
+
+            saveState();
+            renderActivitiesList();
+            renderWeeksDropdown();
+            renderTrailsDropdown();
+
+            // Ativa o primeiro elemento de cada aba se não houver um selecionado
+            const activeId = appData[key].activeActivityId || Object.keys(appData[key].activities)[0];
+            selectActivity(activeId);
+
+            const activeWeekId = appData[key].activeWeekId || Object.keys(appData[key].notebooks)[0];
+            selectWeek(activeWeekId);
+
+            const activeTrailId = appData[key].activeTrailId || Object.keys(appData[key].trails)[0];
+            selectTrail(activeTrailId);
+
+            clearCompareArea();
+            clearTrailCompareArea();
+        }
+
+        // ADICIONAR ALUNO DINAMICAMENTE
+        function addNewStudent() {
+            const input = document.getElementById("new-student-name");
+            const name = input.value.trim();
+            if (!name) {
+                showToast("Por favor, digite o nome completo do aluno.", "warning");
+                return;
+            }
+
+            const key = `${currentPeriodo}_${currentTurma}`;
+            
+            if (!appData[key].students) {
+                appData[key].students = [];
+            }
+
+            // Verifica duplicidade
+            if (appData[key].students.some(s => s.toLowerCase() === name.toLowerCase())) {
+                showToast(`O estudante "${name}" já está cadastrado nesta turma!`, "warning");
+                return;
+            }
+
+            // Adiciona e ordena alfabeticamente
+            appData[key].students.push(name);
+            appData[key].students.sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+            saveState();
+            input.value = "";
+            showToast(`Estudante "${name}" cadastrado com sucesso!`, "success");
+
+            // Atualiza a tela
+            renderTurmasList();
+            renderActivitiesList();
+
+            if (currentTab === 'roster') {
+                renderStudentRoster(appData[key].activeActivityId);
+            } else if (currentTab === 'notebook') {
+                renderNotebookTable();
+            } else if (currentTab === 'trilhas') {
+                renderTrailTable();
+            }
+        }
+
+        // REMOVER ALUNO DINAMICAMENTE
+        function triggerDeleteStudent(studentName) {
+            const key = `${currentPeriodo}_${currentTurma}`;
+            
+            showCustomConfirm(
+                "Remover Estudante da Turma?",
+                `Confirma a remoção do aluno "${studentName}"? Todos os históricos de atividades, cadernos semanais e trilhas deste aluno nesta turma serão perdidos definitivamente.`,
+                () => {
+                    // Remove da lista
+                    appData[key].students = appData[key].students.filter(s => s !== studentName);
+
+                    // Limpa de registros de Atividades
+                    if (appData[key].activities) {
+                        for (const actId in appData[key].activities) {
+                            if (appData[key].activities[actId].records) {
+                                delete appData[key].activities[actId].records[studentName];
+                            }
+                        }
+                    }
+
+                    // Limpa de registros de Cadernos
+                    if (appData[key].notebooks) {
+                        for (const weekId in appData[key].notebooks) {
+                            if (appData[key].notebooks[weekId].records) {
+                                delete appData[key].notebooks[weekId].records[studentName];
+                            }
+                        }
+                    }
+
+                    // Limpa de registros de Trilhas
+                    if (appData[key].trails) {
+                        for (const trailId in appData[key].trails) {
+                            if (appData[key].trails[trailId].records) {
+                                delete appData[key].trails[trailId].records[studentName];
+                            }
+                        }
+                    }
+
+                    // Limpa de anotações
+                    if (appData[key].studentNotes) {
+                        delete appData[key].studentNotes[studentName];
+                    }
+
+                    saveState();
+                    showToast(`Estudante "${studentName}" removido da turma com sucesso.`, "info");
+
+                    // Atualiza a tela
+                    renderTurmasList();
+                    renderActivitiesList();
+
+                    if (currentTab === 'roster') {
+                        renderStudentRoster(appData[key].activeActivityId);
+                    } else if (currentTab === 'notebook') {
+                        renderNotebookTable();
+                    } else if (currentTab === 'trilhas') {
+                        renderTrailTable();
+                    }
+                }
+            );
+        }
+
+        // Renderizar Lista de Atividades Ativas na Sidebar
+        function renderActivitiesList() {
+            const container = document.getElementById("activities-container");
+            container.innerHTML = "";
+            const key = `${currentPeriodo}_${currentTurma}`;
+            const acts = appData[key].activities || {};
+
+            const sortedActs = Object.values(acts).sort((a,b) => b.id.localeCompare(a.id));
+
+            if (sortedActs.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">Nenhuma atividade criada.</p>`;
+                return;
+            }
+
+            sortedActs.forEach(act => {
+                const isActive = (appData[key].activeActivityId === act.id);
+                const totalStudents = (appData[key].students || []).length;
+                let entregues = 0;
+                
+                for (const student in act.records) {
+                    if (act.records[student] === 'entregou') entregues++;
+                }
+
+                const item = document.createElement("div");
+                item.className = `group flex justify-between items-center p-2.5 rounded-xl border text-left cursor-pointer transition ${
+                    isActive 
+                    ? "bg-indigo-50 border-indigo-200 text-indigo-950" 
+                    : "border-slate-100 hover:bg-slate-50 text-slate-700"
+                }`;
+                item.onclick = () => selectActivity(act.id);
+                
+                item.innerHTML = `
+                    <div class="flex-grow min-w-0 pr-2">
+                        <p class="text-xs font-bold truncate">${act.title}</p>
+                        <p class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
+                            <i class="fa-regular fa-calendar"></i> ${act.date} • 
+                            <span class="font-bold text-indigo-600">${entregues}/${totalStudents} OK</span>
+                        </p>
+                    </div>
+                    <button onclick="triggerDeleteActivity(event, '${act.id}')" class="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-50 hover:text-red-600 rounded text-slate-400 transition" title="Excluir atividade">
+                        <i class="fa-solid fa-trash-can text-xs"></i>
+                    </button>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        function createNewActivity() {
+            const input = document.getElementById("new-activity-title");
+            const title = input.value.trim();
+            if (!title) {
+                showToast("Por favor, digite um nome para a atividade.", "warning");
+                return;
+            }
+
+            const dateInput = document.getElementById("new-activity-date").value;
+            let formattedDate = "";
+            if (dateInput) {
+                const parts = dateInput.split("-");
+                formattedDate = `${parts[2]}/${parts[1]}/${parts[0]}`;
+            } else {
+                formattedDate = new Date().toLocaleDateString('pt-BR');
+            }
+
+            const key = `${currentPeriodo}_${currentTurma}`;
+            const actId = "act_" + Date.now();
+            
+            appData[key].activities[actId] = {
+                id: actId,
+                title: title,
+                date: formattedDate,
+                records: {}
+            };
+
+            appData[key].activeActivityId = actId;
+            input.value = "";
+            saveState();
+            renderActivitiesList();
+            selectActivity(actId);
+            showToast(`Atividade "${title}" criada com sucesso!`, "success");
+        }
+
+        function selectActivity(actId) {
+            const key = `${currentPeriodo}_${currentTurma}`;
+            appData[key].activeActivityId = actId;
+            renderActivitiesList();
+            renderStudentRoster(actId);
+        }
+
+        function triggerDeleteActivity(event, actId) {
+            event.stopPropagation();
+            const key = `${currentPeriodo}_${currentTurma}`;
+            const title = appData[key].activities[actId].title;
+            
+            showCustomConfirm(
+                "Excluir Atividade?",
+                `Deseja realmente apagar a atividade "${title}" e todos os registros associados a ela?`,
+                () => {
+                    delete appData[key].activities[actId];
+                    if (appData[key].activeActivityId === actId) {
+                        const remaining = Object.keys(appData[key].activities);
+                        appData[key].activeActivityId = remaining.length > 0 ? remaining[0] : null;
+                    }
+                    saveState();
+                    renderActivitiesList();
+                    renderStudentRoster(appData[key].activeActivityId);
+                    showToast("Atividade removida com sucesso.", "info");
+                }
+            );
+        }
+
+        // Renderizar Relação de Estudantes (TAB 1) com Cálculo de Absenteísmo e Ação de Remoção
+        function renderStudentRoster(actId) {
+            const tableBody = document.getElementById("student-table-body");
+            const label = document.getElementById("active-activity-label");
+            const actionsBox = document.getElementById("quick-actions-box");
+            
+            tableBody.innerHTML = "";
+            actionsBox.innerHTML = "";
+
+            const key = `${currentPeriodo}_${currentTurma}`;
+            const students = appData[key].students || [];
+
+            if (!actId || !appData[key].activities[actId]) {
+                label.innerHTML = `Nenhuma atividade selecionada`;
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="text-center py-12 text-slate-400">
+                            <i class="fa-solid fa-inbox text-4xl mb-2 block"></i>
+                            Crie uma atividade na barra esquerda para iniciar o controle.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            const activeAct = appData[key].activities[actId];
+            label.innerText = `${activeAct.title} (Criada em ${activeAct.date})`;
+
+            actionsBox.innerHTML = `
+                <button onclick="setAllStatus('entregou')" class="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded border border-emerald-200 transition font-medium">Marcar todos entregues</button>
+                <button onclick="setAllStatus('nao-entregou')" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded border border-rose-200 transition font-medium">Marcar todos pendentes</button>
+            `;
+
+            // Calcular estatísticas acumuladas do aluno em todas as atividades
+            const studentStats = {};
+            students.forEach(st => {
+                studentStats[st] = { entregou: 0, naoEntregou: 0 };
+            });
+
+            const acts = appData[key].activities || {};
+            for (const aId in acts) {
+                const act = acts[aId];
+                for (const studentName in act.records) {
+                    if (studentStats[studentName]) {
+                        if (act.records[studentName] === 'entregou') {
+                            studentStats[studentName].entregou++;
+                        } else if (act.records[studentName] === 'nao-entregou') {
+                            studentStats[studentName].naoEntregou++;
+                        }
+                    }
+                }
+            }
+
+            students.forEach(student => {
+                const status = activeAct.records[student] || "pendente";
+                const note = appData[key].studentNotes[student] || "";
+                
+                const stats = studentStats[student] || { entregou: 0, naoEntregou: 0 };
+                const warningNeeded = stats.naoEntregou >= 3;
+
+                const row = document.createElement("tr");
+                row.className = `transition ${warningNeeded ? 'bg-rose-50/40 hover:bg-rose-50/60 border-l-4 border-rose-500' : 'hover:bg-slate-50/50'}`;
+                
+                row.innerHTML = `
+                    <td class="py-3 px-4 font-semibold ${warningNeeded ? 'text-rose-950' : 'text-slate-800'}">
+                        <div class="flex items-center justify-between group/student">
+                            <div class="flex flex-col">
+                                <span>${student}</span>
+                                ${warningNeeded ? '<span class="text-[10px] text-rose-600 font-bold flex items-center gap-1"><i class="fa-solid fa-triangle-exclamation animate-bounce"></i> Alerta: ' + stats.naoEntregou + ' Pendências!</span>' : ''}
+                            </div>
+                            <!-- Botão discreto para excluir aluno individual -->
+                            <button onclick="triggerDeleteStudent('${student}')" class="opacity-0 group-hover/student:opacity-100 p-1 hover:bg-red-100 hover:text-red-700 text-slate-400 rounded transition ml-2" title="Remover estudante da turma">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        <div class="inline-flex flex-col items-center">
+                            <span class="text-xs font-bold text-slate-700">
+                                <span class="text-emerald-600">${stats.entregou} OK</span> / 
+                                <span class="text-rose-600">${stats.naoEntregou} -</span>
+                            </span>
+                            ${warningNeeded ? `
+                                <span class="mt-1 inline-flex items-center px-1.5 py-0.5 bg-rose-600 text-white text-[9px] font-black rounded uppercase tracking-wider animate-pulse">
+                                    Coordenação
+                                </span>
+                            ` : ''}
+                        </div>
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        <div class="inline-flex rounded-xl p-1 bg-slate-100 border border-slate-200 gap-1">
+                            <button onclick="updateStudentStatus('${student}', 'entregou')" class="px-3 py-1.5 text-xs rounded-lg font-bold transition-all ${
+                                status === 'entregou' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                            }">OK</button>
+                            
+                            <button onclick="updateStudentStatus('${student}', 'nao-entregou')" class="px-3 py-1.5 text-xs rounded-lg font-bold transition-all ${
+                                status === 'nao-entregou' ? 'bg-rose-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                            }">-</button>
+                            
+                            <button onclick="updateStudentStatus('${student}', 'pendente')" class="px-3 py-1.5 text-xs rounded-lg font-bold transition-all ${
+                                status === 'pendente' ? 'bg-amber-400 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                            }">N/A</button>
+                        </div>
+                    </td>
+                    <td class="py-3 px-4">
+                        <input type="text" value="${note}" placeholder="Nenhuma observação" onchange="updateStudentNote('${student}', this.value)" class="w-full px-3 py-1 text-xs border border-slate-200 rounded-lg focus:ring-1 focus:ring-indigo-500 bg-slate-50/50 focus:bg-white focus:outline-none">
+                    </td>
+                `;
+
+                tableBody.appendChild(row);
+            });
+        }
+
+        function updateStudentStatus(student, status) {
+            const key = `${currentPeriodo}_${currentTurma}`;
+            const actId = appData[key].activeActivityId;
+            if (!actId) return;
+
+            appData[key].activities[actId].records[student] = status;
+            saveState();
+            renderStudentRoster(actId);
+        }
+
+        function updateStudentNote(student, note) {
+            const key = `${currentPeriodo}_${currentTurma}`;
+            appData[key].studentNotes[student] = note;
+            saveState();
+            showToast("Observação atualizada.", "info");
+        }
+
+        function setAllStatus(status) {
+            const key = `${currentPeriodo}_${currentTurma}`;
+            const actId = appData[key].activeActivityId;
+            if (!actId) return;
+
+            const students = appData[key].students || [];
+            students.forEach(st => {
+                appData[key].activities[actId].records[st] = status;
+            });
+
+            saveState();
+            renderStudentRoster(actId);
+            showToast("Alteração aplicada a todos os alunos.", "success");
+        }
+
+        // Alternar Visualização entre as Quatro Abas
+        function switchTab(tab) {
+            currentTab = tab;
+            const tabs = ['roster', 'compare', 'notebook', 'trilhas'];
+            
+            // Remove as classes de ativa de todos os botões e oculta as seções
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-btn-${t}`);
+                const view = document.getElementById(`tab-${t}`);
+                
+                if (btn) btn.className = "px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all text-slate-500 hover:bg-slate-100 hover:text-slate-800";
+                if (view) view.classList.add("hidden");
+            });
+
+            // Ativa o botão selecionado e mostra a respectiva div
+            const activeBtn = document.getElementById(`tab-btn-${tab}`);
+            const activeView = document.getElementById(`tab-${tab}`);
+            
+            if (activeBtn) activeBtn.className = "px-3.5 py-2 text-xs sm:text-sm font-bold rounded-xl transition-all bg-indigo-50 text-indigo-700 border border-indigo-100";
+            if (activeView) activeView.classList.remove("hidden");
+
+            // Exibir ou ocultar card de atividades na barra lateral de acordo com a aba selecionada
+            const sidebarAct = document.getElementById("sidebar-activity-card");
+            if (tab === 'roster' || tab === 'compare') {
+                sidebarAct.classList.remove("hidden");
+            } else {
+                sidebarAct.classList.add("hidden");
+            }
+
+            // Atualiza tabelas internas
+            if (tab === 'notebook') {
+                renderNotebookTable();
+            } else if (tab === 'trilhas') {
+                renderTrailTable();
+            }
+        }
+
+        // Normalização Avançada para Comparação Difusa (Ignora acentos, espaços e caracteres especiais)
+        function normalizeString(str) {
+            return str
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "") // Remove acentos
+                .replace(/[^a-z0-9\s]/g, "") // Limpa pontuações
+                .replace(/\s+/g, " ") // Comprime múltiplos espaços
+                .trim();
+        }
+
+        // Função de correspondência inteligente para lidar com formato Sobrenome, Nome (Invertido)
+        function checkSmartNameMatch(lineText, studentName) {
+            const normLine = normalizeString(lineText);
+            const normStudent = normalizeString(studentName);
+            
+            // 1. Verificação direta do nome completo
+            if (normLine.includes(normStudent)) {
+                return true;
+            }
+
+            // 2. Verificação de correspondência invertida (Ex: "Abreu de Oliveira, Isabela")
+            const parts = studentName.split(" ").filter(p => p.length > 2); // Filtra preposições curtas
+            if (parts.length > 1) {
+                const firstName = normalizeString(parts[0]);
+                const lastName = normalizeString(parts[parts.length - 1]);
+                
+                // Se o texto contém o primeiro nome e o sobrenome principal
+                if (normLine.includes(firstName) && normLine.includes(lastName)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // Comparador Inteligente para Chamadas e Presenças Rápidas
+        function compareNames() {
+            const rawText = document.getElementById("paste-input").value;
+            if (!rawText.trim()) {
+                showToast("Cole o texto bruto da lista de quem deu OK primeiro.", "warning");
+                return;
+            }
+
+            const key = `${currentPeriodo}_${currentTurma}`;
+            const students = appData[key].students || [];
+            compareResults = { match: [], missing: [] };
+
+            students.forEach(student => {
+                let found = false;
+                const lines = rawText.split('\n');
+                for (let line of lines) {
+                    if (checkSmartNameMatch(line, student)) {
+                        found = true;
+                        break;
+                    }
+                }
+
+                if (found) {
+                    compareResults.match.push(student);
+                } else {
+                    compareResults.missing.push(student);
+                }
+            });
+
+            renderCompareResults();
+        }
+
+        function renderCompareResults() {
+            const container = document.getElementById("compare-results-box");
+            const badge = document.getElementById("compare-count-badge");
+            const actionsBar = document.getElementById("compare-actions-bar");
+
+            container.innerHTML = "";
+
+            if (compareResults.match.length === 0 && compareResults.missing.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-slate-400 py-12">
+                        <i class="fa-regular fa-clipboard text-4xl mb-3 block"></i>
+                        <p class="text-sm">Cole o texto à esquerda e clique em <strong>Comparar Listas</strong> para ver quem não realizou a atividade ou não deu OK.</p>
+                    </div>
+                `;
+                badge.innerText = "Aguardando";
+                actionsBar.classList.add("hidden");
+                return;
+            }
+
+            badge.innerText = `${compareResults.match.length} Presentes / ${compareResults.missing.length} Faltando`;
+            badge.className = "px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded text-xs font-bold";
+
+            const missingDiv = document.createElement("div");
+            missingDiv.className = "mb-6";
+            missingDiv.innerHTML = `
+                <h5 class="text-xs font-bold uppercase tracking-wider text-rose-600 mb-2 flex items-center gap-1">
+                    <i class="fa-solid fa-circle-xmark"></i> Não Encontrados no Texto (${compareResults.missing.length})
+                </h5>
+                <div class="bg-rose-50/50 border border-rose-100 rounded-xl p-3 space-y-1 max-h-[140px] overflow-y-auto">
+                    ${compareResults.missing.length > 0 
+                        ? compareResults.missing.map(name => `<div class="text-xs text-rose-800 font-semibold">• ${name}</div>`).join('') 
+                        : '<div class="text-xs text-slate-400 italic">Todos os alunos foram identificados!</div>'
+                    }
+                </div>
+            `;
+            container.appendChild(missingDiv);
+
+            const matchDiv = document.createElement("div");
+            matchDiv.innerHTML = `
+                <h5 class="text-xs font-bold uppercase tracking-wider text-emerald-600 mb-2 flex items-center gap-1">
+                    <i class="fa-solid fa-circle-check"></i> Presentes Identificados (${compareResults.match.length})
+                </h5>
+                <div class="bg-emerald-50/50 border border-emerald-100 rounded-xl p-3 space-y-1 max-h-[140px] overflow-y-auto">
+                    ${compareResults.match.length > 0 
+                        ? compareResults.match.map(name => `<div class="text-xs text-emerald-800">• ${name}</div>`).join('') 
+                        : '<div class="text-xs text-slate-400 italic">Nenhum aluno identificado no texto.</div>'
+                    }
+                </div>
+            `;
+            container.appendChild(matchDiv);
+
+            if (compareResults.missing.length > 0) {
+                actionsBar.classList.remove("hidden");
+            } else {
+                actionsBar.classList.add("hidden");
+            }
+        }
+
+        function triggerApplyCompareToStatus() {
+            const key = `${currentPeriodo}_${currentTurma}`;
+            const actId = appData[key].activeActivityId;
+            
+            if (!actId) {
+                showToast("Crie ou selecione uma atividade para poder aplicar as alterações.", "error");
+                return;
+            }
+
+            const title = appData[key].activities[actId].title;
+            
+            showCustomConfirm(
+                "Aplicar Resultados do Comparador?",
+                `Deseja realmente marcar os ${compareResults.missing.length} alunos ausentes como 'Não Entregou' e os ${compareResults.match.length} presentes como 'Entregou' na atividade "${title}"?`,
+                () => {
+                    compareResults.match.forEach(name => {
+                        appData[key].activities[actId].records[name] = 'entregou';
+                    });
+
+                    compareResults.missing.forEach(name => {
+                        appData[key].activities[actId].records[name] = 'nao-entregou';
+                    });
+
+                    saveState();
+                    renderStudentRoster(actId);
+                    showToast("Sincronização realizada com sucesso!", "success");
+                    switchTab('roster');
+                }
+            );
+        }
+
+        function clearCompareArea() {
+            document.getElementById("paste-input").value = "";
+            compareResults = { match: [], missing: [] };
+            renderCompareResults();
+        }
+
+        // LOGICA DE CADERNO SEMANAL (TAB 3)
+        function renderWeeksDropdown() {
+            const dropdown = document.getElementById("notebook-week-select");
+            dropdown.innerHTML = "";
+            const key = `${currentPeriodo}_${currentTurma}`;
+            const weeks = appData[key].notebooks || {};
+
+            const keys = Object.keys(weeks);
+            if (keys.length === 0) {
+                dropdown.innerHTML = `<option value="">Nenhuma Semana Criada</option>`;
+                return;
+            }
+
+            keys.forEach(wId => {
+                const opt = document.createElement("option");
+                opt.value = wId;
+                opt.text = weeks[wId].title;
+                if (appData[key].activeWeekId === wId) opt.selected = true;
+                dropdown.appendChild(opt);
+            });
+        }
+
+        function selectWeek(weekId) {
+            const key = `${currentPeriodo}_${currentTurma}`;
+            appData[key].activeWeekId = weekId;
+            renderNotebookTable();
+        }
+
+        function createNewWeek() {
+            const input = document.getElementById("new-week-title");
+            const title = input.value.trim();
+            if (!title) {
+                showToast("Insira o nome da nova semana (ex: Semana 2).", "warning");
+                return;
+            }
+
+            const key = `${currentPeriodo}_${currentTurma}`;
+            const weekId = "week_" + Date.now();
+            
+            appData[key].notebooks[weekId] = {
+                id: weekId,
+                title: title,
+                records: {}
+            };
+
+            appData[key].activeWeekId = weekId;
+            input.value = "";
+            saveState();
+            renderWeeksDropdown();
+            renderNotebookTable();
+            showToast(`Período "${title}" para avaliação de cadernos criado.`, "success");
+        }
+
+        function triggerDeleteWeek() {
+            const key = `${currentPeriodo}_${currentTurma}`;
+            const weekId = appData[key].activeWeekId;
+            if (!weekId) {
+                showToast("Nenhuma semana ativa para excluir.", "warning");
+                return;
+            }
+            const title = appData[key].notebooks[weekId].title;
+
+            showCustomConfirm(
+                "Excluir Semana de Avaliação?",
+                `Tem certeza que deseja apagar os registros de caderno de todas as turmas para a "${title}"?`,
+                () => {
+                    delete appData[key].notebooks[weekId];
+                    const remaining = Object.keys(appData[key].notebooks);
+                    appData[key].activeWeekId = remaining.length > 0 ? remaining[0] : null;
+                    
+                    saveState();
+                    renderWeeksDropdown();
+                    renderNotebookTable();
+                    showToast("Semana de avaliação excluída.", "info");
+                }
+            );
+        }
+
+        function updateNotebookRecord(student, score) {
+            const key = `${currentPeriodo}_${currentTurma}`;
+            const weekId = appData[key].activeWeekId;
+            if (!weekId) return;
+
+            appData[key].notebooks[weekId].records[student] = score;
+            saveState();
+            renderNotebookTable();
+        }
+
+        // Renderiza a tabela do Caderno Semanal
+        function renderNotebookTable() {
+            const tbody = document.getElementById("notebook-table-body");
+            tbody.innerHTML = "";
+
+            const key = `${currentPeriodo}_${currentTurma}`;
+            const students = appData[key].students || [];
+            const weekId = appData[key].activeWeekId;
+
+            if (!weekId || !appData[key].notebooks[weekId]) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="3" class="text-center py-12 text-slate-400">
+                            Crie um período semanal de caderno para começar a pontuação.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            const currentWeek = appData[key].notebooks[weekId];
+            
+            // Calcula estatísticas gerais de cadernos de todas as semanas cadastradas
+            const weeks = appData[key].notebooks || {};
+            const studentStats = {};
+            students.forEach(st => {
+                studentStats[st] = { completo: 0, incompleto: 0, naoApresentou: 0 };
+            });
+
+            for (const wId in weeks) {
+                const w = weeks[wId];
+                for (const studentName in w.records) {
+                    if (studentStats[studentName]) {
+                        if (w.records[studentName] === 'completo') studentStats[studentName].completo++;
+                        else if (w.records[studentName] === 'incompleto') studentStats[studentName].incompleto++;
+                        else if (w.records[studentName] === 'nao') studentStats[studentName].naoApresentou++;
+                    }
+                }
+            }
+
+            students.forEach(student => {
+                const currentStatus = currentWeek.records[student] || "pendente";
+                const stats = studentStats[student] || { completo: 0, incompleto: 0, naoApresentou: 0 };
+
+                const row = document.createElement("tr");
+                row.className = "hover:bg-slate-50/50 transition";
+
+                row.innerHTML = `
+                    <td class="py-3 px-4 font-semibold text-slate-800 flex justify-between items-center group/student">
+                        <span>${student}</span>
+                        <!-- Botão de remoção para manter consistência -->
+                        <button onclick="triggerDeleteStudent('${student}')" class="opacity-0 group-hover/student:opacity-100 p-1 hover:bg-red-100 hover:text-red-700 text-slate-400 rounded transition ml-2" title="Remover estudante da turma">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        <div class="inline-flex flex-col text-xs font-bold">
+                            <span class="text-slate-600">
+                                <span class="text-emerald-600">${stats.completo} OK</span> /
+                                <span class="text-amber-500">${stats.incompleto} Inc</span> /
+                                <span class="text-rose-600">${stats.naoApresentou} -</span>
+                            </span>
+                        </div>
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        <div class="inline-flex rounded-xl p-1 bg-slate-100 border border-slate-200 gap-1">
+                            <button onclick="updateNotebookRecord('${student}', 'completo')" class="px-2.5 py-1 text-xs rounded-lg font-bold transition-all ${
+                                currentStatus === 'completo' ? 'bg-emerald-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                            }" title="Completo (OK)">Completo</button>
+                            
+                            <button onclick="updateNotebookRecord('${student}', 'incompleto')" class="px-2.5 py-1 text-xs rounded-lg font-bold transition-all ${
+                                currentStatus === 'incompleto' ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                            }" title="Incompleto">Incompleto</button>
+                            
+                            <button onclick="updateNotebookRecord('${student}', 'nao')" class="px-2.5 py-1 text-xs rounded-lg font-bold transition-all ${
+                                currentStatus === 'nao' ? 'bg-rose-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                            }" title="Não Apresentou (-)">Não Entr.</button>
+                        </div>
+                    </td>
+                `;
+
+                tbody.appendChild(row);
+            });
+        }
+
+        // LOGICA DE TRILHAS APRENDE BRASIL (TAB 4)
+        function renderTrailsDropdown() {
+            const dropdown = document.getElementById("trail-select");
+            dropdown.innerHTML = "";
+            const key = `${currentPeriodo}_${currentTurma}`;
+            const trails = appData[key].trails || {};
+
+            const keys = Object.keys(trails);
+            if (keys.length === 0) {
+                dropdown.innerHTML = `<option value="">Nenhuma Trilha Criada</option>`;
+                return;
+            }
+
+            keys.forEach(tId => {
+                const opt = document.createElement("option");
+                opt.value = tId;
+                opt.text = trails[tId].title;
+                if (appData[key].activeTrailId === tId) opt.selected = true;
+                dropdown.appendChild(opt);
+            });
+        }
+
+        function selectTrail(trailId) {
+            const key = `${currentPeriodo}_${currentTurma}`;
+            appData[key].activeTrailId = trailId;
+            renderTrailTable();
+        }
+
+        function createNewTrail() {
+            const input = document.getElementById("new-trail-title");
+            const title = input.value.trim();
+            if (!title) {
+                showToast("Insira o nome da nova trilha de exercícios.", "warning");
+                return;
+            }
+
+            const key = `${currentPeriodo}_${currentTurma}`;
+            const trailId = "trail_" + Date.now();
+            
+            appData[key].trails[trailId] = {
+                id: trailId,
+                title: title,
+                records: {}
+            };
+
+            appData[key].activeTrailId = trailId;
+            input.value = "";
+            saveState();
+            renderTrailsDropdown();
+            renderTrailTable();
+            showToast(`Trilha "${title}" para exercícios do Aprende Brasil criada.`, "success");
+        }
+
+        function triggerDeleteTrail() {
+            const key = `${currentPeriodo}_${currentTurma}`;
+            const trailId = appData[key].activeTrailId;
+            if (!trailId) {
+                showToast("Selecione uma trilha ativa para apagar.", "warning");
+                return;
+            }
+            const title = appData[key].trails[trailId].title;
+
+            showCustomConfirm(
+                "Excluir Trilha de Exercícios?",
+                `Confirma a exclusão definitiva da "${title}" e todos os registros de acessos dos estudantes?`,
+                () => {
+                    delete appData[key].trails[trailId];
+                    const remaining = Object.keys(appData[key].trails);
+                    appData[key].activeTrailId = remaining.length > 0 ? remaining[0] : null;
+
+                    saveState();
+                    renderTrailsDropdown();
+                    renderTrailTable();
+                    showToast("Trilha excluída com sucesso.", "info");
+                }
+            );
+        }
+
+        // Comparador Avançado com extração de porcentagem e fração do Aprende Brasil
+        function compareTrailNames() {
+            const rawText = document.getElementById("trail-paste-input").value;
+            if (!rawText.trim()) {
+                showToast("Cole o texto bruto de alunos que finalizaram a trilha no Aprende Brasil.", "warning");
+                return;
+            }
+
+            const key = `${currentPeriodo}_${currentTurma}`;
+            const students = appData[key].students || [];
+            trailCompareResults = { match: [], missing: [] };
+
+            const lines = rawText.split('\n');
+
+            students.forEach(student => {
+                let foundLine = null;
+                for (let line of lines) {
+                    if (checkSmartNameMatch(line, student)) {
+                        foundLine = line;
+                        break;
+                    }
+                }
+
+                if (foundLine) {
+                    // Extrair Porcentagem (ex: 88,46% ou 100%)
+                    let percentage = "";
+                    const pctMatch = foundLine.match(/(\d+(?:[.,]\d+)?\s*%)/);
+                    if (pctMatch) {
+                        percentage = pctMatch[1].trim();
+                    }
+
+                    // Extrair fração/capítulos (ex: 34,5 / 39)
+                    let fraction = "";
+                    const fracMatch = foundLine.match(/(\d+(?:[.,]\d+)?\s*\/\s*\d+(?:[.,]\d+)?)/);
+                    if (fracMatch) {
+                        fraction = fracMatch[1].trim();
+                    }
+
+                    trailCompareResults.match.push({
+                        name: student,
+                        percentage: percentage,
+                        fraction: fraction
+                    });
+                } else {
+                    trailCompareResults.missing.push(student);
+                }
+            });
+
+            renderTrailCompareResults();
+        }
+
+        function renderTrailCompareResults() {
+            const container = document.getElementById("trail-results-box");
+            const badge = document.getElementById("trail-compare-badge");
+            const actionsBar = document.getElementById("trail-actions-bar");
+
+            container.innerHTML = "";
+
+            if (trailCompareResults.match.length === 0 && trailCompareResults.missing.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-slate-400 py-8">
+                        <p>Cole a listagem de concluintes à esquerda e clique em **Compare Acessos & Notas**.</p>
+                    </div>
+                `;
+                badge.innerText = "Aguardando";
+                actionsBar.classList.add("hidden");
+                return;
+            }
+
+            badge.innerText = `${trailCompareResults.match.length} Concluíram / ${trailCompareResults.missing.length} Pendentes`;
+            badge.className = "px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded text-[10px] font-bold";
+
+            const missingDiv = document.createElement("div");
+            missingDiv.className = "mb-4";
+            missingDiv.innerHTML = `
+                <h5 class="font-bold text-rose-600 mb-1 flex items-center gap-1">
+                    <i class="fa-solid fa-clock"></i> Pendentes de Acesso (${trailCompareResults.missing.length})
+                </h5>
+                <div class="bg-rose-50/50 border border-rose-100 rounded-lg p-2 space-y-0.5 max-h-[80px] overflow-y-auto">
+                    ${trailCompareResults.missing.map(name => `<div class="text-xs text-rose-800 font-semibold">• ${name}</div>`).join('')}
+                </div>
+            `;
+            container.appendChild(missingDiv);
+
+            const matchDiv = document.createElement("div");
+            matchDiv.innerHTML = `
+                <h5 class="font-bold text-emerald-600 mb-1 flex items-center gap-1">
+                    <i class="fa-solid fa-circle-check"></i> Conclusões com Rendimento Extraído (${trailCompareResults.match.length})
+                </h5>
+                <div class="bg-emerald-50/50 border border-emerald-100 rounded-lg p-2 space-y-1.5 max-h-[140px] overflow-y-auto">
+                    ${trailCompareResults.match.map(item => `
+                        <div class="text-xs flex justify-between items-center bg-white p-1 rounded border border-emerald-100">
+                            <span class="font-semibold text-emerald-950">${item.name}</span>
+                            <div class="flex gap-1.5">
+                                ${item.fraction ? `<span class="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded text-[10px] font-medium">${item.fraction}</span>` : ''}
+                                ${item.percentage ? `<span class="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded text-[10px] font-bold">${item.percentage}</span>` : ''}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            container.appendChild(matchDiv);
+
+            actionsBar.classList.remove("hidden");
+        }
+
+        function triggerApplyCompareToTrail() {
+            const key = `${currentPeriodo}_${currentTurma}`;
+            const trailId = appData[key].activeTrailId;
+
+            if (!trailId) {
+                showToast("É necessário selecionar uma trilha ativa para salvar.", "error");
+                return;
+            }
+
+            const title = appData[key].trails[trailId].title;
+
+            showCustomConfirm(
+                "Sincronizar Acessos do Aprende Brasil?",
+                `Confirma a aplicação dos resultados de desempenho para a trilha "${title}"? Os alunos ausentes serão marcados como 'Pendente (-)' e os encontrados terão seu rendimento percentual associado.`,
+                () => {
+                    // Limpar registros velhos da trilha ativa para essa carga
+                    appData[key].trails[trailId].records = {};
+
+                    trailCompareResults.match.forEach(item => {
+                        let scoreText = item.percentage;
+                        if (item.fraction) {
+                            scoreText += ` (${item.fraction})`;
+                        }
+                        appData[key].trails[trailId].records[item.name] = {
+                            status: 'concluiu',
+                            score: scoreText
+                        };
+                    });
+
+                    trailCompareResults.missing.forEach(name => {
+                        appData[key].trails[trailId].records[name] = {
+                            status: 'pendente',
+                            score: ''
+                        };
+                    });
+
+                    saveState();
+                    renderTrailTable();
+                    showToast("Status e notas das trilhas sincronizados com sucesso!", "success");
+                }
+            );
+        }
+
+        function clearTrailCompareArea() {
+            document.getElementById("trail-paste-input").value = "";
+            trailCompareResults = { match: [], missing: [] };
+            renderTrailCompareResults();
+        }
+
+        // Atualiza o status e/ou a nota manualmente
+        function updateTrailStatus(student, status) {
+            const key = `${currentPeriodo}_${currentTurma}`;
+            const trailId = appData[key].activeTrailId;
+            if (!trailId) return;
+
+            const currentRec = appData[key].trails[trailId].records[student] || {};
+            const oldScore = typeof currentRec === 'object' ? (currentRec.score || '') : '';
+
+            appData[key].trails[trailId].records[student] = {
+                status: status,
+                score: oldScore
+            };
+            saveState();
+            renderTrailTable();
+        }
+
+        function updateTrailScore(student, scoreValue) {
+            const key = `${currentPeriodo}_${currentTurma}`;
+            const trailId = appData[key].activeTrailId;
+            if (!trailId) return;
+
+            const currentRec = appData[key].trails[trailId].records[student] || {};
+            const oldStatus = typeof currentRec === 'object' ? (currentRec.status || 'nao-avaliado') : (currentRec === 'concluiu' ? 'concluiu' : 'pendente');
+
+            appData[key].trails[trailId].records[student] = {
+                status: oldStatus,
+                score: scoreValue
+            };
+            saveState();
+        }
+
+        // Helper para analisar a porcentagem numérica para o distintivo visual
+        function getPerformanceBadge(scoreString) {
+            if (!scoreString) return '<span class="text-xs text-slate-400 italic">Sem nota</span>';
+            
+            const match = scoreString.match(/(\d+(?:[.,]\d+)?)\s*%/);
+            if (!match) {
+                return `<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold bg-slate-100 text-slate-700">${scoreString}</span>`;
+            }
+
+            const value = parseFloat(match[1].replace(',', '.'));
+            let badgeClass = "bg-rose-100 text-rose-800";
+            if (value >= 70) {
+                badgeClass = "bg-emerald-100 text-emerald-800";
+            } else if (value >= 50) {
+                badgeClass = "bg-amber-100 text-amber-800";
+            }
+
+            return `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${badgeClass}"><i class="fa-solid fa-chart-simple mr-1"></i> ${scoreString}</span>`;
+        }
+
+        // Renderiza a tabela de status manuais/sincronizados da Trilha ativa
+        function renderTrailTable() {
+            const tbody = document.getElementById("trail-status-table-body");
+            tbody.innerHTML = "";
+
+            const key = `${currentPeriodo}_${currentTurma}`;
+            const students = appData[key].students || [];
+            const trailId = appData[key].activeTrailId;
+
+            if (!trailId || !appData[key].trails[trailId]) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="3" class="text-center py-6 text-slate-400">
+                            Selecione ou crie uma trilha acima para visualizar.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            const currentTrail = appData[key].trails[trailId];
+
+            students.forEach(student => {
+                const record = currentTrail.records[student] || {};
+                
+                // Normalizar registros legados que eram apenas strings
+                let status = "nao-avaliado";
+                let score = "";
+                if (typeof record === 'string') {
+                    status = record === 'concluiu' ? 'concluiu' : 'pendente';
+                } else {
+                    status = record.status || "nao-avaliado";
+                    score = record.score || "";
+                }
+
+                const row = document.createElement("tr");
+                row.className = "hover:bg-slate-50/50 transition";
+
+                row.innerHTML = `
+                    <td class="py-2.5 px-4 font-semibold text-slate-800 flex justify-between items-center group/student">
+                        <span>${student}</span>
+                        <!-- Botão de remoção para manter consistência -->
+                        <button onclick="triggerDeleteStudent('${student}')" class="opacity-0 group-hover/student:opacity-100 p-1 hover:bg-red-100 hover:text-red-700 text-slate-400 rounded transition ml-2" title="Remover estudante da turma">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </td>
+                    <td class="py-2.5 px-4 text-center">
+                        <div class="flex flex-col sm:flex-row items-center justify-center gap-2">
+                            <div class="w-24 text-center">
+                                ${getPerformanceBadge(score)}
+                            </div>
+                            <input type="text" value="${score}" placeholder="Ex: 88% (34/39)" onchange="updateTrailScore('${student}', this.value)" class="w-32 px-2 py-1 text-xs border border-slate-200 rounded focus:ring-1 focus:ring-emerald-500 bg-white focus:outline-none text-center">
+                        </div>
+                    </td>
+                    <td class="py-2.5 px-4 text-center">
+                        <div class="inline-flex rounded-xl p-1 bg-slate-100 border border-slate-200 gap-1">
+                            <button onclick="updateTrailStatus('${student}', 'concluiu')" class="px-3 py-1 text-xs rounded-lg font-bold transition-all ${
+                                status === 'concluiu' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                            }">Acessou / Concluiu (OK)</button>
+                            
+                            <button onclick="updateTrailStatus('${student}', 'pendente')" class="px-3 py-1 text-xs rounded-lg font-bold transition-all ${
+                                status === 'pendente' ? 'bg-rose-500 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                            }">Pendente (-)</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        // Toast Customizado (Sem uso de alert nativo)
+        function showToast(message, type = "info") {
+            const container = document.getElementById("toast-container");
+            const toast = document.createElement("div");
+            
+            let bg = "bg-slate-800 text-white";
+            let icon = "fa-circle-info";
+            
+            if (type === "success") {
+                bg = "bg-emerald-600 text-white";
+                icon = "fa-circle-check";
+            } else if (type === "warning") {
+                bg = "bg-amber-500 text-slate-900";
+                icon = "fa-triangle-exclamation";
+            } else if (type === "error") {
+                bg = "bg-rose-600 text-white";
+                icon = "fa-circle-exclamation";
+            }
+
+            toast.className = `${bg} px-4 py-3 rounded-xl shadow-lg flex items-center gap-2.5 text-xs font-bold transform transition-all duration-300 translate-y-10 opacity-0 pointer-events-auto`;
+            toast.innerHTML = `
+                <i class="fa-solid ${icon} text-sm"></i>
+                <span>${message}</span>
+            `;
+
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.classList.remove("translate-y-10", "opacity-0");
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add("translate-y-10", "opacity-0");
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 3500);
+        }
+
+        // Exportação de Backup local em JSON (Mantém os novos alunos adicionados de forma definitiva)
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `Backup_Diario_Completo_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+            showToast("Backup exportado com sucesso!", "success");
+        }
+
+        function importDataTrigger() {
+            document.getElementById("import-file").click();
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const imported = JSON.parse(e.target.result);
+                    if (typeof imported === 'object') {
+                        appData = imported;
+                        saveState();
+                        initApp();
+                        showToast("Registros importados com sucesso!", "success");
+                    } else {
+                        showToast("Arquivo de dados inválido.", "error");
+                    }
+                } catch(err) {
+                    showToast("Erro ao descriptografar arquivo de backup.", "error");
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Excluir todos os dados do aplicativo
+        function triggerClearAllData() {
+            showCustomConfirm(
+                "Apagar Todas as Atividades e Cadernos?",
+                "Esta ação é extrema e definitiva! Todo o progresso cadastrado nas planilhas e no histórico de notas do navegador será reiniciado.",
+                () => {
+                    localStorage.removeItem("diario_classe_completo_v4");
+                    appData = JSON.parse(JSON.stringify(INITIAL_USER_DATA));
+                    initApp();
+                    showToast("Banco de dados local do navegador reiniciado.", "error");
+                }
+            );
+        }
+
+        window.onload = function() {
+            initApp();
+        };
+    </script>
+</body>
+</html>
